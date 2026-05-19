@@ -18,16 +18,20 @@ def load_data():
 
 df = load_data()
 
-# ------------------ LOAD MODEL (FIXED PATH) ------------------
+# ------------------ LOAD MODEL ------------------
 @st.cache_resource
 def load_all():
-    BASE_DIR = os.path.dirname(__file__)
+    try:
+        BASE_DIR = os.path.dirname(__file__)
 
-    model = pickle.load(open(os.path.join(BASE_DIR, "model.pkl"), "rb"))
-    scaler = pickle.load(open(os.path.join(BASE_DIR, "scaler.pkl"), "rb"))
-    feature_cols = pickle.load(open(os.path.join(BASE_DIR, "features.pkl"), "rb"))
+        model = pickle.load(open(os.path.join(BASE_DIR, "model.pkl"), "rb"))
+        scaler = pickle.load(open(os.path.join(BASE_DIR, "scaler.pkl"), "rb"))
+        feature_cols = pickle.load(open(os.path.join(BASE_DIR, "features.pkl"), "rb"))
 
-    return model, scaler, feature_cols
+        return model, scaler, feature_cols
+    except Exception as e:
+        st.error("❌ Model files not found. Check GitHub upload.")
+        st.stop()
 
 model, scaler, feature_cols = load_all()
 
@@ -65,9 +69,10 @@ if page == "Overview":
     fraud = int(df["isFraud"].sum())
     rate = fraud / total if total > 0 else 0
 
-    st.metric("Total Transactions", total)
-    st.metric("Fraud Cases", fraud)
-    st.metric("Detection Rate", f"{rate:.2%}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Transactions", total)
+    col2.metric("Fraud Cases", fraud)
+    col3.metric("Detection Rate", f"{rate:.2%}")
 
     st.dataframe(df.head(50))
 
@@ -76,29 +81,36 @@ elif page == "Explorer":
 
     st.title("🔍 Transaction Explorer")
 
-    txn_id = st.number_input("Transaction Index", 0, len(X)-1)
+    txn_id = st.number_input("Transaction Index", 0, len(X)-1, step=1)
 
-    row_df = pd.DataFrame([X.iloc[txn_id]])
-    prob = model.predict_proba(row_df)[0][1]
+    try:
+        row_df = pd.DataFrame([X.iloc[txn_id]])
+        prob = model.predict_proba(row_df)[0][1]
 
-    st.dataframe(df.iloc[[txn_id]])
+        st.dataframe(df.iloc[[txn_id]])
 
-    st.progress(float(prob))
-    st.write(f"Probability: {prob:.4f}")
+        st.progress(float(prob))
+        st.write(f"Probability: {prob:.4f}")
 
-    if prob >= 0.75:
-        st.error("🔴 High Risk")
-    elif prob >= 0.40:
-        st.warning("🟡 Suspicious")
-    else:
-        st.success("🟢 Safe")
+        if prob >= 0.75:
+            st.error("🔴 High Risk")
+        elif prob >= 0.40:
+            st.warning("🟡 Suspicious")
+        else:
+            st.success("🟢 Safe")
+
+    except:
+        st.error("Invalid transaction index")
 
 # ------------------ PAGE 3 ------------------
 elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
 
+    st.subheader("Global Feature Importance")
     st.image("shap_summary.png")
+
+    st.subheader("Case Explanations")
     st.image("charts/waterfall_fraud.png")
     st.image("charts/waterfall_border.png")
     st.image("charts/waterfall_normal.png")
