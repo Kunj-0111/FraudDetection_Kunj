@@ -6,6 +6,5 @@ xgboost
 lightgbm
 matplotlib
 seaborn
-plotly
+plotly==5.18.0
 kaleido
-shap==0.41.0
