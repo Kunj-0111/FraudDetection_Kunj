@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import plotly.express as px
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
@@ -13,7 +12,7 @@ def load_data():
     return pd.read_csv("../data/train_transaction.csv")
 
 df = load_data()
-df = df.sample(3000, random_state=42)   # REDUCED (important for cloud)
+df = df.sample(3000, random_state=42)
 
 # ------------------ LOAD MODEL ------------------
 @st.cache_resource
@@ -92,8 +91,14 @@ if page == "Overview":
     c3.metric("Detection Rate", f"{rate:.2%}")
     c4.metric("Avg Fraud Amount", f"${avg_amt:.2f}")
 
-    fig = px.histogram(df, x="TransactionAmt", color="isFraud", log_y=True)
-    st.plotly_chart(fig, use_container_width=True)
+    # Matplotlib chart (SAFE)
+    fig, ax = plt.subplots()
+    ax.hist(df["TransactionAmt"], bins=50)
+    ax.set_title("Transaction Amount Distribution")
+    ax.set_xlabel("Amount")
+    ax.set_ylabel("Frequency")
+
+    st.pyplot(fig)
 
 # ------------------ PAGE 2 ------------------
 elif page == "Explorer":
@@ -134,9 +139,8 @@ elif page == "SHAP":
 
     st.subheader("📊 SHAP Explanation")
 
-    # USE IMAGES (NO CRASH)
+    # SHOW PRE-SAVED IMAGES
     st.image("shap_summary.png", caption="Feature Importance")
-
     st.image("charts/waterfall_fraud.png", caption="Fraud Case")
     st.image("charts/waterfall_border.png", caption="Borderline Case")
     st.image("charts/waterfall_normal.png", caption="Normal Case")
