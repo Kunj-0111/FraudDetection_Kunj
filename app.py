@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import os
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 
-# ------------------ LOAD DATA (FIXED) ------------------
+# ------------------ LOAD DATA ------------------
 @st.cache_data
 def load_data():
     data = {
@@ -17,12 +18,15 @@ def load_data():
 
 df = load_data()
 
-# ------------------ LOAD MODEL ------------------
+# ------------------ LOAD MODEL (FIXED PATH) ------------------
 @st.cache_resource
 def load_all():
-    model = pickle.load(open("model.pkl", "rb"))
-    scaler = pickle.load(open("scaler.pkl", "rb"))
-    feature_cols = pickle.load(open("features.pkl", "rb"))
+    BASE_DIR = os.path.dirname(__file__)
+
+    model = pickle.load(open(os.path.join(BASE_DIR, "model.pkl"), "rb"))
+    scaler = pickle.load(open(os.path.join(BASE_DIR, "scaler.pkl"), "rb"))
+    feature_cols = pickle.load(open(os.path.join(BASE_DIR, "features.pkl"), "rb"))
+
     return model, scaler, feature_cols
 
 model, scaler, feature_cols = load_all()
@@ -32,17 +36,12 @@ def preprocess(df):
     df = df.copy()
 
     num_cols = df.select_dtypes(include=['int64','float64']).columns
-    cat_cols = df.select_dtypes(include=['object']).columns
 
     for col in num_cols:
         df[col] = df[col].fillna(df[col].median())
 
-    for col in cat_cols:
-        df[col] = df[col].fillna("unknown")
-
     df['AmtToMeanRatio'] = df['TransactionAmt'] / df['TransactionAmt'].mean()
     df['HourOfDay'] = (df['TransactionDT'] // 3600) % 24
-
     df['DeviceRisk'] = 0
 
     return df
@@ -70,7 +69,6 @@ if page == "Overview":
     st.metric("Fraud Cases", fraud)
     st.metric("Detection Rate", f"{rate:.2%}")
 
-    st.write("### Sample Data")
     st.dataframe(df.head(50))
 
 # ------------------ PAGE 2 ------------------
@@ -100,7 +98,7 @@ elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
 
-    st.image("shap_summary.png", caption="Feature Importance")
-    st.image("charts/waterfall_fraud.png", caption="Fraud Case")
-    st.image("charts/waterfall_border.png", caption="Borderline Case")
-    st.image("charts/waterfall_normal.png", caption="Normal Case")
+    st.image("shap_summary.png")
+    st.image("charts/waterfall_fraud.png")
+    st.image("charts/waterfall_border.png")
+    st.image("charts/waterfall_normal.png")
