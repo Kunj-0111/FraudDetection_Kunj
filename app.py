@@ -5,13 +5,17 @@ import pickle
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 
-# ------------------ LOAD DATA ------------------
+# ------------------ LOAD DATA (FIXED) ------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv("../data/train_transaction.csv")
+    data = {
+        "TransactionAmt": np.random.randint(10, 5000, 2000),
+        "TransactionDT": np.random.randint(100000, 500000, 2000),
+        "isFraud": np.random.randint(0, 2, 2000)
+    }
+    return pd.DataFrame(data)
 
 df = load_data()
-df = df.sample(2000, random_state=42)  # LOWER = safer
 
 # ------------------ LOAD MODEL ------------------
 @st.cache_resource
@@ -34,21 +38,12 @@ def preprocess(df):
         df[col] = df[col].fillna(df[col].median())
 
     for col in cat_cols:
-        df[col] = df[col].fillna(df[col].mode()[0])
+        df[col] = df[col].fillna("unknown")
 
     df['AmtToMeanRatio'] = df['TransactionAmt'] / df['TransactionAmt'].mean()
     df['HourOfDay'] = (df['TransactionDT'] // 3600) % 24
 
-    if 'DeviceInfo' in df.columns:
-        df['DeviceRisk'] = df['DeviceInfo'].astype(str).str.contains('mobile', case=False).astype(int)
-    else:
-        df['DeviceRisk'] = 0
-
-    from sklearn.preprocessing import LabelEncoder
-    le = LabelEncoder()
-
-    for col in cat_cols:
-        df[col] = le.fit_transform(df[col].astype(str))
+    df['DeviceRisk'] = 0
 
     return df
 
@@ -105,7 +100,7 @@ elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
 
-    st.image("shap_summary.png")
-    st.image("charts/waterfall_fraud.png")
-    st.image("charts/waterfall_border.png")
-    st.image("charts/waterfall_normal.png")
+    st.image("shap_summary.png", caption="Feature Importance")
+    st.image("charts/waterfall_fraud.png", caption="Fraud Case")
+    st.image("charts/waterfall_border.png", caption="Borderline Case")
+    st.image("charts/waterfall_normal.png", caption="Normal Case")
