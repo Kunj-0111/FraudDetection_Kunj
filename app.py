@@ -2,21 +2,18 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import shap
 import plotly.express as px
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 
-
+# ------------------ LOAD DATA ------------------
 @st.cache_data
 def load_data():
     return pd.read_csv("../data/train_transaction.csv")
 
 df = load_data()
-df = df.sample(5000, random_state=42)  # FIXED
+df = df.sample(3000, random_state=42)   # REDUCED (important for cloud)
 
 # ------------------ LOAD MODEL ------------------
 @st.cache_resource
@@ -28,7 +25,7 @@ def load_all():
 
 model, scaler, feature_cols = load_all()
 
-
+# ------------------ PREPROCESS ------------------
 def preprocess(df):
     df = df.copy()
 
@@ -57,18 +54,18 @@ def preprocess(df):
 
     return df
 
-
+# ------------------ FEATURE PREP ------------------
 X_raw = df.drop("isFraud", axis=1)
 X = preprocess(X_raw)
 X = X.reindex(columns=feature_cols, fill_value=0)
 X = pd.DataFrame(scaler.transform(X), columns=feature_cols)
 
-
+# ------------------ SIDEBAR ------------------
 st.sidebar.title("⚙️ Controls")
 
 page = st.sidebar.radio("Navigation", ["Overview", "Explorer", "SHAP"])
 
-st.sidebar.write(f"📊 Total Sample Loaded: {len(df)}")
+st.sidebar.write(f"📊 Total Loaded: {len(df)}")
 
 min_amt = st.sidebar.slider(
     "Minimum Transaction Amount",
@@ -79,16 +76,14 @@ min_amt = st.sidebar.slider(
 
 df = df[df["TransactionAmt"] >= min_amt]
 
-st.sidebar.write(f"📉 After Filter: {len(df)}")
-
+# ------------------ PAGE 1 ------------------
 if page == "Overview":
 
     st.title("📊 Fraud Detection Overview")
-    st.markdown("### 📈 Real-Time Fraud Detection Dashboard")
 
     total = len(df)
     fraud = int(df["isFraud"].sum())
-    rate = fraud / total
+    rate = fraud / total if total > 0 else 0
     avg_amt = df[df["isFraud"] == 1]["TransactionAmt"].mean()
 
     c1, c2, c3, c4 = st.columns(4)
@@ -100,36 +95,32 @@ if page == "Overview":
     fig = px.histogram(df, x="TransactionAmt", color="isFraud", log_y=True)
     st.plotly_chart(fig, use_container_width=True)
 
-
+# ------------------ PAGE 2 ------------------
 elif page == "Explorer":
 
     st.title("🔍 Transaction Explorer")
-    st.markdown("### 🔎 Analyze Individual Transaction")
 
     txn_id = st.number_input("Transaction Index", 0, len(X)-1)
 
     row_df = pd.DataFrame([X.iloc[txn_id]])
     prob = model.predict_proba(row_df)[0][1]
 
-    st.subheader("📄 Transaction Details")
     st.dataframe(df.iloc[[txn_id]])
 
-    st.subheader("⚠️ Risk Score")
     st.progress(float(prob))
-    st.write(f"Probability: **{prob:.4f}**")
+    st.write(f"Probability: {prob:.4f}")
 
     if prob >= 0.75:
-        st.error("🔴 High Risk Transaction")
+        st.error("🔴 High Risk")
     elif prob >= 0.40:
-        st.warning("🟡 Suspicious Transaction")
+        st.warning("🟡 Suspicious")
     else:
-        st.success("🟢 Safe Transaction")
+        st.success("🟢 Safe")
 
-
+# ------------------ PAGE 3 ------------------
 elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
-    st.markdown("### 🧠 Model Decision Breakdown")
 
     txn_id = st.number_input("Transaction Index", 0, len(X)-1)
 
@@ -138,28 +129,21 @@ elif page == "SHAP":
     pred = model.predict(row_df)[0]
     prob = model.predict_proba(row_df)[0][1]
 
-    st.subheader("Prediction")
     st.write("Fraud" if pred == 1 else "Legitimate")
+    st.write(f"Probability: {prob:.4f}")
 
-    st.subheader("Probability")
-    st.write(f"{prob:.4f}")
+    st.subheader("📊 SHAP Explanation")
 
-    # SHAP (CORRECT)
-    explainer = shap.Explainer(model, X)
-    shap_values = explainer(X)
+    # USE IMAGES (NO CRASH)
+    st.image("shap_summary.png", caption="Feature Importance")
 
-    st.subheader("📊 SHAP Waterfall")
-
-    fig, ax = plt.subplots()
-    shap.plots.waterfall(shap_values[txn_id], show=False)
-    st.pyplot(fig)
-    plt.close(fig)
-
-    st.subheader("📝 Explanation")
+    st.image("charts/waterfall_fraud.png", caption="Fraud Case")
+    st.image("charts/waterfall_border.png", caption="Borderline Case")
+    st.image("charts/waterfall_normal.png", caption="Normal Case")
 
     if prob >= 0.75:
         st.error("High risk due to strong fraud indicators.")
     elif prob >= 0.40:
-        st.warning("Borderline case with mixed signals.")
+        st.warning("Mixed signals, needs monitoring.")
     else:
-        st.success("Transaction appears normal.")
+        st.success("Transaction looks normal.")
