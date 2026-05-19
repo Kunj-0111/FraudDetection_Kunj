@@ -11,7 +11,7 @@ st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 def load_data():
     data = {
         "TransactionAmt": np.random.randint(10, 5000, 2000),
-        "TransactionDT": np.random.randint(100000, 500000, 2000),
+        "TransactionDT": np.random.randint(100000, 500000, 2000),  # FIXED
         "isFraud": np.random.randint(0, 2, 2000)
     }
     return pd.DataFrame(data)
@@ -29,8 +29,8 @@ def load_all():
         feature_cols = pickle.load(open(os.path.join(BASE_DIR, "features.pkl"), "rb"))
 
         return model, scaler, feature_cols
-    except Exception as e:
-        st.error("❌ Model files not found. Check GitHub upload.")
+    except:
+        st.error("❌ Model files not found. Make sure model.pkl, scaler.pkl, features.pkl are uploaded in same folder.")
         st.stop()
 
 model, scaler, feature_cols = load_all()
