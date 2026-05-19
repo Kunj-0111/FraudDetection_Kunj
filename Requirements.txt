@@ -4,8 +4,8 @@ numpy
 scikit-learn
 xgboost
 lightgbm
-shap==0.44.1
 matplotlib
 seaborn
 plotly
 kaleido
+shap==0.41.0
