@@ -1,3 +1,5 @@
+"Due to file size limitations, full dataset is not included. Sample/demo data used for deployment."
+
 # 💳 Real-Time Fraud Detection System with Explainable AI
 
 ## 📌 Overview
