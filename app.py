@@ -5,10 +5,12 @@ import pickle
 import shap
 import plotly.express as px
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 
-# ------------------ LOAD DATA ------------------
+
 @st.cache_data
 def load_data():
     return pd.read_csv("../data/train_transaction.csv")
@@ -26,7 +28,7 @@ def load_all():
 
 model, scaler, feature_cols = load_all()
 
-# ------------------ PREPROCESS ------------------
+
 def preprocess(df):
     df = df.copy()
 
@@ -55,13 +57,13 @@ def preprocess(df):
 
     return df
 
-# ------------------ APPLY PIPELINE ------------------
+
 X_raw = df.drop("isFraud", axis=1)
 X = preprocess(X_raw)
 X = X.reindex(columns=feature_cols, fill_value=0)
 X = pd.DataFrame(scaler.transform(X), columns=feature_cols)
 
-# ------------------ SIDEBAR ------------------
+
 st.sidebar.title("⚙️ Controls")
 
 page = st.sidebar.radio("Navigation", ["Overview", "Explorer", "SHAP"])
@@ -79,7 +81,6 @@ df = df[df["TransactionAmt"] >= min_amt]
 
 st.sidebar.write(f"📉 After Filter: {len(df)}")
 
-# ------------------ PAGE 1 ------------------
 if page == "Overview":
 
     st.title("📊 Fraud Detection Overview")
@@ -99,7 +100,7 @@ if page == "Overview":
     fig = px.histogram(df, x="TransactionAmt", color="isFraud", log_y=True)
     st.plotly_chart(fig, use_container_width=True)
 
-# ------------------ PAGE 2 ------------------
+
 elif page == "Explorer":
 
     st.title("🔍 Transaction Explorer")
@@ -124,7 +125,7 @@ elif page == "Explorer":
     else:
         st.success("🟢 Safe Transaction")
 
-# ------------------ PAGE 3 ------------------
+
 elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
