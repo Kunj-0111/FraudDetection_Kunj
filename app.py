@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
 
@@ -12,7 +11,7 @@ def load_data():
     return pd.read_csv("../data/train_transaction.csv")
 
 df = load_data()
-df = df.sample(3000, random_state=42)
+df = df.sample(2000, random_state=42)  # LOWER = safer
 
 # ------------------ LOAD MODEL ------------------
 @st.cache_resource
@@ -61,19 +60,7 @@ X = pd.DataFrame(scaler.transform(X), columns=feature_cols)
 
 # ------------------ SIDEBAR ------------------
 st.sidebar.title("⚙️ Controls")
-
 page = st.sidebar.radio("Navigation", ["Overview", "Explorer", "SHAP"])
-
-st.sidebar.write(f"📊 Total Loaded: {len(df)}")
-
-min_amt = st.sidebar.slider(
-    "Minimum Transaction Amount",
-    0,
-    int(df["TransactionAmt"].max()),
-    0
-)
-
-df = df[df["TransactionAmt"] >= min_amt]
 
 # ------------------ PAGE 1 ------------------
 if page == "Overview":
@@ -83,22 +70,13 @@ if page == "Overview":
     total = len(df)
     fraud = int(df["isFraud"].sum())
     rate = fraud / total if total > 0 else 0
-    avg_amt = df[df["isFraud"] == 1]["TransactionAmt"].mean()
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Transactions", total)
-    c2.metric("Fraud Cases", fraud)
-    c3.metric("Detection Rate", f"{rate:.2%}")
-    c4.metric("Avg Fraud Amount", f"${avg_amt:.2f}")
+    st.metric("Total Transactions", total)
+    st.metric("Fraud Cases", fraud)
+    st.metric("Detection Rate", f"{rate:.2%}")
 
-    # Matplotlib chart (SAFE)
-    fig, ax = plt.subplots()
-    ax.hist(df["TransactionAmt"], bins=50)
-    ax.set_title("Transaction Amount Distribution")
-    ax.set_xlabel("Amount")
-    ax.set_ylabel("Frequency")
-
-    st.pyplot(fig)
+    st.write("### Sample Data")
+    st.dataframe(df.head(50))
 
 # ------------------ PAGE 2 ------------------
 elif page == "Explorer":
@@ -127,27 +105,7 @@ elif page == "SHAP":
 
     st.title("🧠 SHAP Explainability")
 
-    txn_id = st.number_input("Transaction Index", 0, len(X)-1)
-
-    row_df = pd.DataFrame([X.iloc[txn_id]])
-
-    pred = model.predict(row_df)[0]
-    prob = model.predict_proba(row_df)[0][1]
-
-    st.write("Fraud" if pred == 1 else "Legitimate")
-    st.write(f"Probability: {prob:.4f}")
-
-    st.subheader("📊 SHAP Explanation")
-
-    # SHOW PRE-SAVED IMAGES
-    st.image("shap_summary.png", caption="Feature Importance")
-    st.image("charts/waterfall_fraud.png", caption="Fraud Case")
-    st.image("charts/waterfall_border.png", caption="Borderline Case")
-    st.image("charts/waterfall_normal.png", caption="Normal Case")
-
-    if prob >= 0.75:
-        st.error("High risk due to strong fraud indicators.")
-    elif prob >= 0.40:
-        st.warning("Mixed signals, needs monitoring.")
-    else:
-        st.success("Transaction looks normal.")
+    st.image("shap_summary.png")
+    st.image("charts/waterfall_fraud.png")
+    st.image("charts/waterfall_border.png")
+    st.image("charts/waterfall_normal.png")
